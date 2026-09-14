@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include <iomanip>
+#include <algorithm>
 OrderBook::OrderBook() {
     
 }
@@ -9,7 +10,9 @@ OrderBook::~OrderBook() {
     
 }
 
-
+void OrderBook::add_order(Order order) {
+    process_order(order);
+}
 
 void OrderBook::add_ask(int Price, int Quantity) {
     Order new_ask = Order(Price, Quantity, Ask);
@@ -62,71 +65,175 @@ void OrderBook::updatePriceLevels() {
 
 
 void OrderBook::process_order(Order order) {
-    
-    switch (order.side) {
-        case Bid: {
-            bool canMatch = true;
-            
-            while(canMatch) {
-                if(asks.empty()) {
-                    add_bid(order);
-                    canMatch = false;
-                } else if (order.price >= asks[0].price) {
-                    int fillAmount = 0;
-                    if(order.quantity > asks[0].quantity) {
-                        fillAmount = asks[0].quantity;
-                        order.quantity = order.quantity - fillAmount;
-                        asks.erase(asks.begin());
-                    } else if (order.quantity <= asks[0].quantity) {
-                        fillAmount = order.quantity;
-                        asks[0].quantity = asks[0].quantity - fillAmount;
-                        order.quantity = order.quantity - fillAmount;
-                        if(asks[0].quantity == 0) {
+    switch (order.type) {
+        case Limit: {
+            switch (order.side) {
+                case Bid: {
+                    while (
+                        order.quantity > 0 &&
+                        !asks.empty() &&
+                        order.price >= asks[0].price
+                    ) {
+                        int fillAmount = std::min(
+                            order.quantity,
+                            asks[0].quantity
+                        );
+
+                        order.quantity -= fillAmount;
+                        asks[0].quantity -= fillAmount;
+
+                        if (asks[0].quantity == 0) {
                             asks.erase(asks.begin());
-                            canMatch = false;
                         }
-                        canMatch = false;
                     }
-                } else {
-                    canMatch = false;
-                    add_bid(order);
+
+                    if (order.quantity > 0) {
+                        add_bid(order);
+                    }
+
+                    break;
                 }
-            }
-            break;
-        }
-        case Ask: {
-            bool canMatch = true;
-            while(canMatch) {
-                if(bids.empty()) {
-                    add_ask(order);
-                    canMatch = false;
-                } else if (order.price <= bids[0].price) {
-                    int fillAmount = 0;
-                    if(order.quantity > bids[0].quantity) {
-                        fillAmount = bids[0].quantity;
-                        order.quantity = order.quantity - fillAmount;
-                        bids.erase(bids.begin());
-                    } else if(order.quantity <= bids[0].quantity) {
-                        fillAmount = order.quantity;
-                        bids[0].quantity = bids[0].quantity - fillAmount;
-                        order.quantity = order.quantity - fillAmount;
-                        if(bids[0].quantity == 0) {
+
+                case Ask: {
+                    while (
+                        order.quantity > 0 &&
+                        !bids.empty() &&
+                        order.price <= bids[0].price
+                    ) {
+                        int fillAmount = std::min(
+                            order.quantity,
+                            bids[0].quantity
+                        );
+
+                        order.quantity -= fillAmount;
+                        bids[0].quantity -= fillAmount;
+
+                        if (bids[0].quantity == 0) {
                             bids.erase(bids.begin());
                         }
-                        canMatch = false;
                     }
-                } else {
-                    canMatch = false;
-                    add_ask(order);
+
+                    if (order.quantity > 0) {
+                        add_ask(order);
+                    }
+
+                    break;
+                }
+
+                default: {
+                    break;
                 }
             }
+
             break;
         }
-                
-    }
-    
-}
 
+        case Market: {
+            int originalQuantity = order.quantity;
+            long long totalExecutionValue = 0;
+            int totalQuantityFilled = 0;
+            int bookOrdersConsumed = 0;
+
+            switch (order.side) {
+                case Buy: {
+                    while (order.quantity > 0 && !asks.empty()) {
+                        int fillAmount = std::min(
+                            order.quantity,
+                            asks[0].quantity
+                        );
+
+                        int fillPrice = asks[0].price;
+
+                        totalExecutionValue +=
+                            static_cast<long long>(fillAmount) * fillPrice;
+
+                        totalQuantityFilled += fillAmount;
+                        order.quantity -= fillAmount;
+                        asks[0].quantity -= fillAmount;
+
+                        bookOrdersConsumed++;
+
+                        if (asks[0].quantity == 0) {
+                            asks.erase(asks.begin());
+                        }
+                    }
+
+                    break;
+                }
+
+                case Sell: {
+                    while (order.quantity > 0 && !bids.empty()) {
+                        int fillAmount = std::min(
+                            order.quantity,
+                            bids[0].quantity
+                        );
+
+                        int fillPrice = bids[0].price;
+
+                        totalExecutionValue +=
+                            static_cast<long long>(fillAmount) * fillPrice;
+
+                        totalQuantityFilled += fillAmount;
+                        order.quantity -= fillAmount;
+                        bids[0].quantity -= fillAmount;
+
+                        bookOrdersConsumed++;
+
+                        if (bids[0].quantity == 0) {
+                            bids.erase(bids.begin());
+                        }
+                    }
+
+                    break;
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            std::cout << "\n--- MARKET ORDER RESULT ---\n";
+
+            std::cout << "Requested Quantity: "
+                      << originalQuantity << '\n';
+
+            std::cout << "Quantity Filled: "
+                      << totalQuantityFilled << '\n';
+
+            std::cout << "Orders on Book Consumed: "
+                      << bookOrdersConsumed << '\n';
+
+            if (totalQuantityFilled > 0) {
+                double averageFillPrice =
+                    static_cast<double>(totalExecutionValue)
+                    / totalQuantityFilled;
+
+                std::cout << "Average Fill Price: "
+                          << averageFillPrice << '\n';
+            } else {
+                std::cout << "Average Fill Price: N/A\n";
+            }
+
+            if (order.quantity > 0) {
+                std::cout
+                    << "No more liquidity in the market to fulfill this order!\n";
+
+                std::cout << "Quantity Unfilled/Cancelled: "
+                          << order.quantity << '\n';
+            } else {
+                std::cout << "Quantity Unfilled/Cancelled: 0\n";
+            }
+
+            std::cout << "---------------------------\n";
+
+            break;
+        }
+
+        default: {
+            break;
+        }
+    }
+}
 
 
 

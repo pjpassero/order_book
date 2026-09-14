@@ -4,7 +4,14 @@
 
 enum Side {
     Bid,
-    Ask
+    Ask,
+    Buy,
+    Sell
+};
+
+enum OrderType {
+    Limit,
+    Market
 };
 
 
@@ -12,13 +19,22 @@ struct Order {
     int price;
     int quantity;
     Side side;
+    OrderType type;
     int order_id;
     inline static int order_counter = 1;
+    Order(int Quantity, Side Side, OrderType Type) {
+        price = 0.0;
+        quantity = Quantity;
+        side = Side;
+        order_id = order_counter++;
+        type = Type;
+    }
     Order(int Price, int Quantity, Side Side) {
         price = Price;
         quantity = Quantity;
         side = Side;
         order_id = order_counter++;
+        type= Limit;
     }
 };
 
@@ -44,6 +60,7 @@ public:
     void printBook();
     void updatePriceLevels();
     void process_order(Order order);
+    void add_order(Order order);
     std::string getDepth();
     
 };
