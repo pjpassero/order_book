@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -58,9 +59,15 @@ public:
     void add_ask(Order order);
     void printAsks();
     void printBook();
+    void printPriceLevelDepth();
     void updatePriceLevels();
     void process_order(Order order);
     void add_order(Order order);
+    
     std::string getDepth();
+    
+    
+    //Partcipant functionality
+    void push_order(Order &order);
     
 };

@@ -3,6 +3,9 @@
 #include <iterator>
 #include <iomanip>
 #include <algorithm>
+
+
+
 OrderBook::OrderBook() {
     
 }
@@ -61,6 +64,11 @@ void OrderBook::updatePriceLevels() {
         std::cout << '\n' << "Bid Level: " << bid << " Quantity: " << quantity << "\n";
     }
     */
+}
+
+
+void OrderBook::push_order(Order &order) {
+    add_order(order);
 }
 
 
@@ -238,7 +246,7 @@ void OrderBook::process_order(Order order) {
 
 
 void OrderBook::printBook() {
-    std::cout << "\n ===================== ORDER BOOK NEW =====================\n\n";
+    std::cout << "\n ===================== ORDER BOOK - ORDER DEPTH =====================\n\n";
     std::cout << std::left << std::setw(28) << "BIDS" << "ASKS\n";
     std::cout << "--------------------------------------------------------\n";
     std::cout<< std::left << std::setw(14) << "PRICE" <<
@@ -269,4 +277,87 @@ void OrderBook::printBook() {
     }
     std::cout << '\n';
 }
-    
+
+
+void OrderBook::printPriceLevelDepth() {
+
+    std::cout << "\n ===================== ORDER BOOK - PRICE LEVEL DEPTH =====================\n\n";
+
+    std::vector<std::pair<int, int>> bidDepth;
+    std::vector<std::pair<int, int>> askDepth;
+
+    if (!bids.empty()) {
+        int currentPrice = bids[0].price;
+        int totalQuantity = 0;
+
+        for (int i = 0; i < bids.size(); i++) {
+            if (bids[i].price == currentPrice) {
+                totalQuantity += bids[i].quantity;
+            } else {
+                bidDepth.push_back({currentPrice, totalQuantity});
+
+                currentPrice = bids[i].price;
+                totalQuantity = bids[i].quantity;
+            }
+        }
+
+        bidDepth.push_back({currentPrice, totalQuantity});
+    }
+
+    if (!asks.empty()) {
+        int currentPrice = asks[0].price;
+        int totalQuantity = 0;
+
+        for (int i = 0; i < asks.size(); i++) {
+            if (asks[i].price == currentPrice) {
+                totalQuantity += asks[i].quantity;
+            } else {
+                askDepth.push_back({currentPrice, totalQuantity});
+
+                currentPrice = asks[i].price;
+                totalQuantity = asks[i].quantity;
+            }
+        }
+
+        askDepth.push_back({currentPrice, totalQuantity});
+    }
+
+    std::cout << std::left << std::setw(28) << "BIDS" << "ASKS\n";
+    std::cout << "--------------------------------------------------------\n";
+
+    std::cout << std::left
+              << std::setw(14) << "PRICE"
+              << std::setw(14) << "Quantity"
+              << std::setw(14) << "PRICE"
+              << std::setw(14) << "Quantity"
+              << '\n';
+
+    size_t maxRows = std::max(bidDepth.size(), askDepth.size());
+
+    for (size_t i = 0; i < maxRows; i++) {
+
+        if (i < bidDepth.size()) {
+            std::cout << std::left
+                      << std::setw(14) << bidDepth[i].first
+                      << std::setw(14) << bidDepth[i].second;
+        } else {
+            std::cout << std::left
+                      << std::setw(14) << ""
+                      << std::setw(14) << "";
+        }
+
+        if (i < askDepth.size()) {
+            std::cout << std::left
+                      << std::setw(14) << askDepth[i].first
+                      << std::setw(14) << askDepth[i].second;
+        } else {
+            std::cout << std::left
+                      << std::setw(14) << ""
+                      << std::setw(14) << "";
+        }
+
+        std::cout << '\n';
+    }
+
+    std::cout << '\n';
+}
